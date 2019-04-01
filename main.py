@@ -18,9 +18,9 @@ if int(index) == 1:
     city = input(prompt)
     while city != 'quit':
         repo = Weather(city, appcode, token)   #创建实例
-        print(repo.get_weather())   #打印显示
         pd.set_option('display.max_columns', None)
+        print(repo.get_weather())   #打印显示
         city = input(prompt)
 else:
-    print(view(city_dict, appcode, token))
     pd.set_option('display.max_columns', None)
+    print(view(city_dict, appcode, token))
