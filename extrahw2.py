@@ -3,20 +3,22 @@ import time
 import json
 import matplotlib.pyplot as plt
 import sqlite3
+import matplotlib.font_manager as fm
 
 
-# 用来获得 时间戳
+
+# 获得时间戳
 def gettime():
     return int(round(time.time() * 1000))
 
 
 if __name__ == '__main__':
     "一，请求数据"
-    # 用来定义头部
+    # 定义头部
     headers = {}
-    # 用来传递参数
+    # 传递参数
     keyvalue = {}
-    # 目标网址
+
     url = 'http://data.stats.gov.cn/easyquery.htm'
 
     # 头部填充
@@ -33,8 +35,10 @@ if __name__ == '__main__':
     keyvalue['dfwds'] = '[{"wdcode":"zb","valuecode":"A0203"}]'
     keyvalue['k1'] = str(gettime())
 
-    # 发出请求，使用get方法，这里使用我们自定义的头部和参数
+    # 发出请求，使用get方法
     r = requests.post(url, headers=headers, params=keyvalue)
+
+#以上为爬取数据部分，下面是将数据存入数据库文件中
 
     year = []
     first = []
@@ -54,24 +58,6 @@ if __name__ == '__main__':
             if (float(value['data']['data'])) != 0:
                 third.append(float(value['data']['data']))
 
-
-    plt.rcParams['font.sans-serif'] = ['SimHei']
-    plt.rcParams['axes.unicode_minus'] = False
-    plt.plot(year, first)
-    plt.plot(year, second)
-    plt.plot(year, third)
-    plt.xlabel(u'年份')
-    plt.ylabel(u'%')
-    plt.title(u'变化情况')
-    plt.show()
-
-    labels = 'first', 'second', 'third'
-    fracs = [float(int(first[0])), float(int(second[0])), float(int(third[0]))]
-    plt.axis('equal')
-    explode = [0, 0, 0]
-    ##autopct ='%.0f%%'是将百分比(0表示取零位小数)显示出来,explode= explode 是将饼图部分凸显出来。#shadow 显示阴影。
-    plt.pie(fracs, labels=labels, autopct='%.2f%%',explode=explode)
-    plt.show()
 
     conn = sqlite3.connect('production.db')
     print("Opened database successfully")
@@ -98,3 +84,46 @@ if __name__ == '__main__':
     conn.commit()
     print("Records created successfully")
     conn.close()
+
+#以上为存储数据库文件部分，下面为读取数据库文件并画图
+
+    year2 = []
+    first2 = []
+    second2 = []
+    third2 = []
+
+    conn = sqlite3.connect('production.db')
+    c = conn.cursor()
+    c.execute("select * from PRODUCTION;")
+    data = c.fetchall()
+    conn.commit()
+    conn.close()
+
+    for row in data:
+        year2.append(row[1])
+        first2.append(row[2])
+        second2.append(row[3])
+        third2.append(row[4])
+
+    plt.rcParams['font.sans-serif'] = ['SimHei']
+    plt.rcParams['axes.unicode_minus'] = False
+    # 加载中文字体
+    my_font = fm.FontProperties(fname="C:\Windows\Fonts\simkai.ttf")
+
+    x, = plt.plot(year2, first2)
+    y, = plt.plot(year2, second2)
+    z, = plt.plot(year2, third2)
+    plt.legend(handles=[x, y, z], labels=['第一产业', '第二产业', '第三产业'], loc='lower right', prop=my_font)
+    plt.xlabel(u'年份')
+    plt.ylabel(u'%')
+    plt.title(u'十年内三次产业构成变化折线图')
+    plt.show()
+
+    labels = '第一产业', '第二产业', '第三产业'
+    fracs = [float(int(first2[0])), float(int(second2[0])), float(int(third2[0]))]
+    plt.axis('equal')
+    plt.title(u'2017年三次产业构成图')
+    explode = [0, 0, 0]
+    ##autopct ='%.0f%%'是将百分比(0表示取零位小数)显示出来,explode= explode 是将饼图部分凸显出来。#shadow 显示阴影。
+    plt.pie(fracs, labels=labels, autopct='%.2f%%', explode=explode)
+    plt.show()
