@@ -3,20 +3,19 @@ import time
 import json
 import matplotlib.pyplot as plt
 import sqlite3
+import matplotlib.font_manager as fm
 
-
-# 用来获得 时间戳
+# 获得时间戳
 def gettime():
     return int(round(time.time() * 1000))
 
-
 if __name__ == '__main__':
     "一，请求数据"
-    # 用来定义头部
+    # 定义头部
     headers = {}
-    # 用来传递参数
+    # 传递参数
     keyvalue = {}
-    # 目标网址
+
     url = 'http://data.stats.gov.cn/easyquery.htm'
 
     # 头部填充
@@ -31,17 +30,18 @@ if __name__ == '__main__':
     keyvalue['colcode'] = 'sj'
     keyvalue['wds'] = '[]'
     keyvalue['dfwds'] = '[{"wdcode":"zb","valuecode":"A0301"}]'
-    keyvalue['k1'] = '1556605507553'#str(gettime())
+    keyvalue['k1'] = str(gettime())
 
-    # 发出请求，使用get方法，这里使用我们自定义的头部和参数
+    # 发出请求，使用get方法
     r = requests.get(url, headers=headers, params=keyvalue)
+
+    # 以上为爬取数据部分，下面是将数据存入数据库文件中
 
     year = []
     population = []
     men = []
     women = []
-    men_proportion = []
-    women_proportion = []
+
     print(r.text)
     data = json.loads(r.text)
     data_one = data['returndata']['datanodes']
@@ -53,10 +53,6 @@ if __name__ == '__main__':
             men.append(int(value['data']['strdata']))
         if 'A030103_sj' in value['code']:
             women.append(int(value['data']['strdata']))
-
-    for i in range(0,len(year)):
-        men_proportion.append(float(int(men[i]))/float(int(population[i])))
-        women_proportion.append(float(int(women[i])) / float(int(population[i])))
 
     conn = sqlite3.connect('population.db')
     print("Opened database successfully")
@@ -84,16 +80,46 @@ if __name__ == '__main__':
     print("Records created successfully")
     conn.close()
 
+    # 以上为存储数据库文件部分，下面为读取数据库文件并画图
+
+    year2 = []
+    population2 = []
+    women2 = []
+    men2 = []
+    men_proportion = []
+    women_proportion = []
+
+    conn = sqlite3.connect('population.db')
+    c = conn.cursor()
+    c.execute("select * from POPULATION;")
+    data = c.fetchall()
+    conn.commit()
+    conn.close()
+
+    for row in data:
+        year2.append(row[1])
+        population2.append(row[2])
+        men2.append(row[3])
+        women2.append(row[4])
+
+    for i in range(0,len(year2)):
+        men_proportion.append(float(int(men2[i]))/float(int(population2[i])))
+        women_proportion.append(float(int(women2[i])) / float(int(population2[i])))
+
     plt.rcParams['font.sans-serif'] = ['SimHei']
     plt.rcParams['axes.unicode_minus'] = False
-    plt.bar(year, population)
+    # 加载中文字体
+    my_font = fm.FontProperties(fname="C:\Windows\Fonts\simkai.ttf")
+
+    plt.bar(year2, population2)
     plt.xlabel(u'年份')
     plt.ylabel(u'万人')
     plt.title(u'年末总人口')
     plt.show()
 
-    plt.plot(year, men_proportion)
-    plt.plot(year, women_proportion)
+    x, = plt.plot(year2, men_proportion)
+    y, = plt.plot(year2, women_proportion)
+    plt.legend(handles=[x, y], labels=['男性占比', '女性占比'], loc='lower right', prop=my_font)
     plt.xlabel(u'年份')
     plt.ylabel(u'%')
     plt.title(u'男性与女性人口占比对比')
